@@ -1,0 +1,52 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+
+# Local application configuration
+config/config.yaml
+!config/config.example.yaml
+
+# Go build outputs and binaries
+bin/
+build/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Coverage and profiling reports
+coverage/
+coverage.out
+*.coverprofile
+*.prof
+
+# Logs and runtime files
+logs/
+*.log
+*.pid
+
+# Local uploaded files and generated runtime data
+uploads/
+tmp/
+data/
+
+# Local database dumps
+*.sql.gz
+*.dump
+*.bak
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Go workspace files
+go.work
+go.work.sum
