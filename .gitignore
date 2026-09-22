@@ -46,6 +46,7 @@ data/
 *.iml
 .DS_Store
 Thumbs.db
+.vs/
 
 # Go workspace files
 go.work
