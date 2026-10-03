@@ -1,0 +1,34 @@
+### 1. 测试登录接口（用预置账号 test/123456）
+POST http://localhost:8080/api/public/login
+Content-Type: application/json
+
+{
+    "username": "test",
+    "password": "123456"
+}
+
+### 2. 测试注册接口
+POST http://localhost:8080/api/public/register
+Content-Type: application/json
+
+{
+    "username": "zhangsan",
+    "password": "123456",
+    "nickname": "张三",
+    "phone": "139****0000"
+}
+
+### 3. 测试获取物品列表（GET 接口示例）
+GET http://localhost:8080/api/public/items
+### 5. 测试发布物品接口
+POST http://localhost:8080/api/public/item/publish
+Content-Type: application/json
+
+{
+    "title": "丢失的校园卡",
+    "type": "lost",
+    "description": "姓名张三,卡号2023001,卡套是蓝色的",
+    "location": "图书馆二楼自习室",
+    "phone": "135****6789",
+    "userid": 1
+}
