@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"campus-lost-found-backend/config"
 
@@ -32,6 +33,16 @@ func InitDB() {
 	}
 
 	log.Println("数据库连接成功")
+
+	// 连接池
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatalf("获取数据库连接实例失败: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(10)                  // 最大同时打开的连接数
+	sqlDB.SetMaxIdleConns(5)                   // 最大空闲连接数
+	sqlDB.SetConnMaxLifetime(time.Hour)        // 单个连接最长存活时间
+	sqlDB.SetConnMaxIdleTime(30 * time.Minute) // 空闲连接最长存活时间
 
 	err = DB.AutoMigrate(&User{}, &Item{})
 	if err != nil {
