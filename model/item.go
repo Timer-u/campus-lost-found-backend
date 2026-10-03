@@ -15,4 +15,5 @@ type Item struct {
 	ImageURL    string `gorm:"type:varchar(255)" json:"image_url,omitempty"`
 	Status      string `gorm:"type:varchar(20);default:'published'" json:"status,omitempty"`
 	UserID      uint   `gorm:"not null" json:"user_id,omitempty"`
+	User        User   `gorm:"foreignKey:UserID" json:"-"`
 }
