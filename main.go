@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/gin-gonic/gin"
+
 	"campus-lost-found-backend/config"
 	"campus-lost-found-backend/model"
 	"campus-lost-found-backend/router"
@@ -13,6 +15,11 @@ func main() {
 	// 加载 config.yaml
 	if err := config.InitConfig(); err != nil {
 		panic(err)
+	}
+
+	// release 模式关闭 Gin 的 debug 输出
+	if config.GlobalConfig.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	model.InitDB()

@@ -1,0 +1,27 @@
+### 1. 测试健康检查
+GET http://localhost:8080/health
+
+### 2. 测试登录接口（用预置账号 20260001/123456）
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+    "username": "20260001",
+    "password": "123456"
+}
+
+### 3. 测试注册接口
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+    "username": "20260002",
+    "name": "张三",
+    "password": "123456"
+}
+
+### 4. 测试获取物品列表
+GET http://localhost:8080/api/v1/items
+
+### 5. 测试获取物品详情
+GET http://localhost:8080/api/v1/items/1

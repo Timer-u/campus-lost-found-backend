@@ -1,0 +1,44 @@
+name: backend-ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # 构建 + 单元测试：push 到 main 和所有 PR 都会执行
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+      - name: 构建
+        run: go build ./...
+      - name: 单元测试
+        run: go test ./...
+
+  # 自动部署：仅在 push 到 main 且测试通过后执行（PR 上只跑上面的测试）
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+      - name: 交叉编译 Linux 二进制
+        run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o campus-backend .
+      - name: 配置部署私钥
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      - name: 上传并重启服务
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            campus-backend root@${{ secrets.ECS_HOST }}:/opt/campus/backend/campus-backend
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.ECS_HOST }} "systemctl restart campus-backend && sleep 2 && curl -sf http://127.0.0.1:8080/health"

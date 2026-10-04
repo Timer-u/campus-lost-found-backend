@@ -3,7 +3,9 @@ module campus-lost-found-backend
 go 1.27.1
 
 require (
+	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-gonic/gin v1.12.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/spf13/viper v1.21.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.2
