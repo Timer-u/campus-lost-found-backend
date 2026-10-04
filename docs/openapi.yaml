@@ -8,8 +8,10 @@ info:
     约定：
     - 成功响应统一使用 code=0，失败响应使用非 0 业务错误码。
     - 一个业务错误码只对应一个固定 msg；HTTP 状态码仍用于表达协议层结果。
+    - code=10000 表示服务器内部错误（未预期异常的兜底），不属于业务错误码序列。
     - 登录接口返回 JWT，后续请求使用 Authorization: Bearer <token>。
     - 普通用户只能操作自己的发布和申请；角色权限必须由后端校验。
+    - 非管理员访问管理员接口返回 10010；lost_admin 访问仅 system_admin 可用的接口返回 10011。
     - 普通列表只展示 reviewStatus=approved 的物品。
   contact:
     name: Campus Finder Team
@@ -1468,7 +1470,7 @@ components:
       properties:
         code:
           type: integer
-          description: 业务错误码，0 表示成功
+          description: 业务错误码，0 表示成功；10000 为服务器内部错误兜底码，其余按模块分段（100xx 通用、120xx 物品、130xx 认领、140xx 用户、150xx 公告、160xx 图片）
           example: 10001
         msg:
           type: string
