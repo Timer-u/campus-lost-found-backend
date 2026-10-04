@@ -12,12 +12,12 @@ import (
 // 模拟用户数据
 var userList = []model.User{
 	{
-		ID:        1,
-		RealName:  "test",
-		Password:  "123456",
-		Username:  "测试用户",
-		Phone:     "138****1234",
-		CreatedAt: time.Now(),
+		Base:         model.Base{ID: 1, CreatedAt: time.Now()},
+		Username:     "20260001",
+		PasswordHash: "123456",
+		Name:         "测试用户",
+		Role:         "student",
+		Status:       "active",
 	},
 }
 
@@ -25,29 +25,28 @@ var userList = []model.User{
 func Register(c *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
+		Name     string `json:"name"`
 		Password string `json:"password"`
-		RealName string `json:"real_name"`
 	}
 
 	// 绑定前端传的JSON数据
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ParamError(c, "参数错误")
+		response.Fail(c, response.ErrInvalidParams)
 		return
 	}
 
 	// 简单校验
 	if req.Username == "" || req.Password == "" {
-		response.Error(c, "用户名和密码不能为空")
+		response.Fail(c, response.ErrInvalidParams.WithMsg("用户名和密码不能为空"))
 		return
 	}
 
 	// 创建新用户（模拟）
 	newUser := model.User{
-		ID:        uint(len(userList) + 1),
-		Username:  req.Username,
-		Password:  req.Password,
-		RealName:  req.RealName,
-		CreatedAt: time.Now(),
+		Base:         model.Base{ID: uint(len(userList) + 1), CreatedAt: time.Now()},
+		Username:     req.Username,
+		PasswordHash: req.Password,
+		Name:         req.Name,
 	}
 	userList = append(userList, newUser)
 
@@ -62,13 +61,13 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ParamError(c, "参数错误")
+		response.Fail(c, response.ErrInvalidParams)
 		return
 	}
 
 	// 校验用户名密码
 	for _, user := range userList {
-		if user.Username == req.Username && user.Password == req.Password {
+		if user.Username == req.Username && user.PasswordHash == req.Password {
 			// 后续这里会返回JWT令牌，现在先返回用户信息
 			response.Success(c, gin.H{
 				"user":  user,
@@ -78,5 +77,5 @@ func Login(c *gin.Context) {
 		}
 	}
 
-	response.Error(c, "用户名或密码错误")
+	response.Fail(c, response.ErrInvalidCredentials)
 }

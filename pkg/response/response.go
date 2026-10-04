@@ -15,29 +15,11 @@ func Success(c *gin.Context, data interface{}) {
 	})
 }
 
-// Error 普通业务失败响应，传入错误提示信息
-func Error(c *gin.Context, msg string) {
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"msg":  msg,
-		"data": nil,
-	})
-}
-
-// ErrorWithCode 自定义错误码的失败响应
-func ErrorWithCode(c *gin.Context, code int, msg string) {
-	c.JSON(http.StatusOK, gin.H{
-		"code": code,
-		"msg":  msg,
-		"data": nil,
-	})
-}
-
-// ParamError 参数错误响应，返回 400 状态码
-func ParamError(c *gin.Context, msg string) {
-	c.JSON(http.StatusBadRequest, gin.H{
-		"code": 400,
-		"msg":  msg,
+// Fail 按错误码返回统一失败响应，HTTP 状态码与业务码同时传递
+func Fail(c *gin.Context, e *Errno) {
+	c.JSON(e.HTTP, gin.H{
+		"code": e.Code,
+		"msg":  e.Msg,
 		"data": nil,
 	})
 }
