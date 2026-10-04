@@ -1,75 +1,52 @@
 package router
 
 import (
-	//"net/http" // 原有的导入，健康检查接口会用到
-
-	"github.com/gin-contrib/cors" // 新增：跨域中间件
+	"github.com/gin-contrib/cors" // 跨域中间件
 	"github.com/gin-gonic/gin"
 
-	"campus-lost-found-backend/controller"   // 新增：导入控制器
-	"campus-lost-found-backend/pkg/response" // 新增：统一响应工具包，暂未使用先注释
+	"campus-lost-found-backend/controller"
+	"campus-lost-found-backend/middleware"
+	"campus-lost-found-backend/pkg/response"
 )
 
 func SetupRouter() *gin.Engine {
-	// 创建一个默认 Gin 引擎
-	r := gin.Default()
+	r := gin.New()
 
-	// ===== 新增：全局跨域中间件 =====
-	r.Use(cors.Default())
+	// 全局中间件：日志、panic 恢复（统一返回 10000）、跨域
+	r.Use(gin.Logger(), middleware.Recovery(), cors.Default())
 
-	// 原健康检查接口代码（恢复启用，保证编译运行）
-	// 注册路由映射
-	// 当有人用 GET 方法访问 "/health" 网址时，执行后面的匿名函数
-	// r.GET("/health", func(c *gin.Context) {
-	// 	// c *gin.Context 是 Gin 的上下文，代表这次 HTTP 请求的所有信息
-	// 	// c.JSON 表示给客户端返回一个 JSON 格式的数据
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"code": 0,
-	// 		"msg":  "success",
-	// 		"data": gin.H{
-	// 			"status": "ok",
-	// 		},
-	// 	})
-	// })
-
-	// 新统一响应写法（暂注释，等确认response包函数名再启用）
-	// 健康检查接口：使用统一响应格式，返回结构和原代码完全一致
+	// 健康检查接口
 	r.GET("/health", func(c *gin.Context) {
 		response.Success(c, gin.H{
 			"status": "ok",
 		})
 	})
 
-	//新增：业务路由分组预留骨架
-	// 公开接口组：不需要登录就能访问
-	publicGroup := r.Group("/api/public")
+	// 业务路由：/api/v1，与 docs/openapi.yaml 保持一致
+	apiV1 := r.Group("/api/v1")
 	{
-		// 用户相关
-		publicGroup.POST("/register", controller.Register) // 用户注册
-		publicGroup.POST("/login", controller.Login)       // 用户登录
+		// 认证：注册、登录
+		authGroup := apiV1.Group("/auth")
+		{
+			authGroup.POST("/register", controller.Register)
+			authGroup.POST("/login", controller.Login)
+		}
 
-		// 物品相关
-		publicGroup.GET("/items", controller.GetItemList)      // 获取物品列表
-		publicGroup.GET("/item/:id", controller.GetItemDetail) // 获取物品详情
+		// 物品：公开查询
+		apiV1.GET("/items", controller.GetItemList)
+		apiV1.GET("/items/:itemId", controller.GetItemDetail)
 	}
 
-	//需鉴权接口组：必须登录才能访问（后续写完JWT中间件再取消注释启用）
-	// authGroup := r.Group("/api")
-	// authGroup.Use(middleware.JWTAuth())
+	// 需鉴权接口组骨架（JWT 中间件已就绪，对应接口交付时启用）：
+	// authed := apiV1.Group("")
+	// authed.Use(middleware.JWTAuth())
 	// {
-	// 	// 用户相关接口
-	// 	userGroup := authGroup.Group("/user")
-	// 	{
-	// 		// userGroup.GET("/info", controller.GetUserInfo)
-	// 	}
-
-	// 	// 物品相关接口
-	// 	itemGroup := authGroup.Group("/item")
-	// 	{
-	// 		// itemGroup.POST("/publish", controller.PublishItem)
-	// 		// itemGroup.PUT("/:id", controller.UpdateItem)
-	// 		// itemGroup.DELETE("/:id", controller.DeleteItem)
-	// 	}
+	// 	// 普通登录用户接口
+	// }
+	// admin := apiV1.Group("/admin")
+	// admin.Use(middleware.JWTAuth(), middleware.RequireLostAdmin())
+	// {
+	// 	// 失物招领管理员接口；用户/公告/统计类接口用 middleware.RequireSystemAdmin()
 	// }
 
 	return r

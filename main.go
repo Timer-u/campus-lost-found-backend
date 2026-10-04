@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	//"log"
+	"log"
+
+	"github.com/gin-gonic/gin"
 
 	"campus-lost-found-backend/config"
-	//"campus-lost-found-backend/model"
+	"campus-lost-found-backend/model"
 	"campus-lost-found-backend/router"
 )
 
@@ -14,15 +16,20 @@ func main() {
 	if err := config.InitConfig(); err != nil {
 		panic(err)
 	}
-	//临时跳过数据库，优先跑通接口
-	// model.InitDB()
 
-	// // 程序退出时自动关闭数据库连接
-	// sqlDB, err := model.DB.DB()
-	// if err != nil {
-	// 	log.Fatalf("获取数据库连接实例失败: %v", err)
-	// }
-	// defer sqlDB.Close()
+	// release 模式关闭 Gin 的 debug 输出
+	if config.GlobalConfig.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	model.InitDB()
+
+	// 程序退出时自动关闭数据库连接
+	sqlDB, err := model.DB.DB()
+	if err != nil {
+		log.Fatalf("获取数据库连接实例失败: %v", err)
+	}
+	defer sqlDB.Close()
 
 	// 初始化 Gin 路由规则
 	r := router.SetupRouter()
