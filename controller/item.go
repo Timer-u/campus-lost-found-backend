@@ -13,26 +13,28 @@ import (
 // 模拟数据：临时用内存存储，后面对接数据库再替换
 var itemList = []model.Item{
 	{
-		ID:          1,
-		Title:       "黑色钱包",
-		Type:        "lost",
-		Description: "内有身份证和校园卡，黑色皮质",
-		Location:    "食堂一楼",
-		Phone:       "138****1234",
-		Status:      "未认领",
-		UserID:      1,
-		CreatedAt:   time.Now(),
+		Base:         model.Base{ID: 1, CreatedAt: time.Now()},
+		Title:        "黑色钱包",
+		Type:         "lost",
+		Description:  "内有身份证和校园卡，黑色皮质",
+		Category:     "wallet",
+		Location:     "食堂一楼",
+		Contact:      "138****1234",
+		ReviewStatus: "approved",
+		ItemStatus:   "open",
+		UserID:       1,
 	},
 	{
-		ID:          2,
-		Title:       "捡到一把雨伞",
-		Type:        "found",
-		Description: "蓝色长柄雨伞",
-		Location:    "教学楼A座门口",
-		Phone:       "微信:test123",
-		Status:      "未认领",
-		UserID:      2,
-		CreatedAt:   time.Now(),
+		Base:         model.Base{ID: 2, CreatedAt: time.Now()},
+		Title:        "捡到一把雨伞",
+		Type:         "found",
+		Description:  "蓝色长柄雨伞",
+		Category:     "daily",
+		Location:     "教学楼A座门口",
+		Contact:      "微信:test123",
+		ReviewStatus: "approved",
+		ItemStatus:   "open",
+		UserID:       2,
 	},
 }
 
@@ -45,10 +47,10 @@ func GetItemList(c *gin.Context) {
 // GetItemDetail 获取物品详情
 func GetItemDetail(c *gin.Context) {
 	// 从路径参数里获取id
-	idStr := c.Param("id")
+	idStr := c.Param("itemId")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		response.ParamError(c, "无效的物品ID")
+		response.Fail(c, response.ErrInvalidParams.WithMsg("无效的物品ID"))
 		return
 	}
 
@@ -60,5 +62,5 @@ func GetItemDetail(c *gin.Context) {
 		}
 	}
 
-	response.Error(c, "物品不存在")
+	response.Fail(c, response.ErrItemNotFound)
 }
