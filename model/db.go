@@ -44,7 +44,7 @@ func InitDB() {
 	sqlDB.SetConnMaxLifetime(time.Hour)        // 单个连接最长存活时间
 	sqlDB.SetConnMaxIdleTime(30 * time.Minute) // 空闲连接最长存活时间
 
-	err = DB.AutoMigrate(&User{}, &Item{})
+	err = DB.AutoMigrate(&User{}, &Item{}, &Claim{}, &Announcement{})
 	if err != nil {
 		log.Fatalf("数据库自动迁移失败: %v", err)
 	}
