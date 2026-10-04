@@ -10,10 +10,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: '1.27'
+          go-version: '1.27.1'
       - name: 构建
         run: go build ./...
       - name: 单元测试
@@ -25,10 +25,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: '1.27'
+          go-version: '1.27.1'
       - name: 交叉编译 Linux 二进制
         run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o campus-backend .
       - name: 配置部署私钥
@@ -39,6 +39,6 @@ jobs:
       - name: 上传并重启服务
         run: |
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            campus-backend root@${{ secrets.ECS_HOST }}:/opt/campus/backend/campus-backend
+            campus-backend root@${{ secrets.ECS_HOST }}:/opt/campus/backend/campus-backend.new
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            root@${{ secrets.ECS_HOST }} "systemctl restart campus-backend && sleep 2 && curl -sf http://127.0.0.1:8080/health"
+            root@${{ secrets.ECS_HOST }} "mv /opt/campus/backend/campus-backend.new /opt/campus/backend/campus-backend && systemctl restart campus-backend && sleep 2 && curl -sf http://127.0.0.1:8080/health"
