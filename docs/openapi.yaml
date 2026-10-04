@@ -1,0 +1,1722 @@
+openapi: 3.0.3
+info:
+  title: 校园寻物 Campus Finder API
+  version: 0.1.0
+  description: |
+    校园失物招领系统前后端接口契约初版。
+
+    约定：
+    - 成功响应统一使用 code=0，失败响应使用非 0 业务错误码。
+    - 一个业务错误码只对应一个固定 msg；HTTP 状态码仍用于表达协议层结果。
+    - 登录接口返回 JWT，后续请求使用 Authorization: Bearer <token>。
+    - 普通用户只能操作自己的发布和申请；角色权限必须由后端校验。
+    - 普通列表只展示 reviewStatus=approved 的物品。
+  contact:
+    name: Campus Finder Team
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+  - url: https://api.example.com
+    description: 线上环境占位地址，部署后替换
+tags:
+  - name: Health
+    description: 服务健康检查
+  - name: Auth
+    description: 注册、登录和当前用户
+  - name: Items
+    description: 失物和招领信息
+  - name: Claims
+    description: 认领申请
+  - name: Announcements
+    description: 公告
+  - name: Admin Items
+    description: 失物招领管理员操作
+  - name: Admin Users
+    description: 系统管理员账号操作
+  - name: Admin Announcements
+    description: 系统管理员公告操作
+  - name: Admin Statistics
+    description: 系统数据统计
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: 健康检查
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: 注册学生账号
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '409':
+          $ref: '#/components/responses/UsernameAlreadyExists'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: 登录并获取 JWT
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '403':
+          $ref: '#/components/responses/DisabledUser'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: 获取当前登录用户
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 当前用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: 退出登录
+      description: 本版本使用无状态 JWT，后端返回成功后由前端删除本地 Token。若后续引入 Token 黑名单，可在此接口扩展服务端失效逻辑。
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 退出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/items:
+    get:
+      tags: [Items]
+      summary: 查询物品列表
+      description: 默认只返回审核通过且未下架的公开信息。支持关键词、类型、分类、地点和状态筛选。
+      operationId: listItems
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: keyword
+          in: query
+          description: 在标题、描述和地点中进行模糊搜索
+          schema:
+            type: string
+            maxLength: 100
+        - name: type
+          in: query
+          description: 信息类型
+          schema:
+            $ref: '#/components/schemas/ItemType'
+        - name: category
+          in: query
+          description: 物品分类
+          schema:
+            $ref: '#/components/schemas/ItemCategory'
+        - name: itemStatus
+          in: query
+          description: 物品状态
+          schema:
+            $ref: '#/components/schemas/ItemStatus'
+        - name: location
+          in: query
+          description: 丢失或拾取地点
+          schema:
+            type: string
+            maxLength: 100
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum: [latest, oldest]
+            default: latest
+      responses:
+        '200':
+          description: 物品分页列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemPageResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+
+    post:
+      tags: [Items]
+      summary: 发布失物或招领信息
+      operationId: createItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemRequest'
+      responses:
+        '201':
+          description: 发布成功，默认进入待审核状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/ItemId'
+    get:
+      tags: [Items]
+      summary: 查询物品详情
+      operationId: getItem
+      security: []
+      responses:
+        '200':
+          description: 物品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+
+    patch:
+      tags: [Items]
+      summary: 修改自己的发布信息
+      description: 仅发布者可以修改；审核通过后修改重要内容时可以重新进入待审核状态，由后端决定具体规则。
+      operationId: updateOwnItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidItemState'
+
+    delete:
+      tags: [Items]
+      summary: 删除自己的发布信息
+      operationId: deleteOwnItem
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidItemState'
+
+  /api/v1/uploads/images:
+    post:
+      tags: [Items]
+      summary: 上传物品图片
+      description: 上传成功后返回图片 URL，创建或修改物品时提交 imageUrls。单张不超过 5MB，每个物品最多引用 6 张。
+      operationId: uploadItemImage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+
+  /api/v1/me/items:
+    get:
+      tags: [Items]
+      summary: 查询我的发布
+      operationId: listMyItems
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: reviewStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReviewStatus'
+        - name: itemStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/ItemStatus'
+      responses:
+        '200':
+          description: 当前用户的发布列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/items/{itemId}/claims:
+    post:
+      tags: [Claims]
+      summary: 提交认领申请
+      description: 只有审核通过、处于开放状态的招领信息可以提交申请。发布者不能申请自己的物品，同一用户不能重复申请。
+      operationId: createClaim
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClaimRequest'
+      responses:
+        '201':
+          description: 申请提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+        '409':
+          $ref: '#/components/responses/ClaimNotAllowed'
+
+    get:
+      tags: [Claims]
+      summary: 查询物品的认领申请
+      description: 仅该物品发布者或管理员可以查看。
+      operationId: listItemClaims
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ItemId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 认领申请列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+
+  /api/v1/me/claims:
+    get:
+      tags: [Claims]
+      summary: 查询我的认领申请
+      operationId: listMyClaims
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ClaimStatus'
+      responses:
+        '200':
+          description: 当前用户提交的申请
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/claims/{claimId}/cancel:
+    post:
+      tags: [Claims]
+      summary: 取消自己的认领申请
+      operationId: cancelClaim
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/ClaimNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidClaimState'
+
+  /api/v1/announcements:
+    get:
+      tags: [Announcements]
+      summary: 查询已发布公告
+      operationId: listAnnouncements
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 公告列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementPageResponse'
+
+  /api/v1/admin/items:
+    get:
+      tags: [Admin Items]
+      summary: 管理员查询物品
+      description: 失物招领管理员和系统管理员可用。默认按待审核和更新时间排序。
+      operationId: adminListItems
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: reviewStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReviewStatus'
+        - name: itemStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/ItemStatus'
+        - name: keyword
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+      responses:
+        '200':
+          description: 管理端物品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+
+  /api/v1/admin/items/{itemId}/review:
+    patch:
+      tags: [Admin Items]
+      summary: 审核物品发布
+      operationId: reviewItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewItemRequest'
+      responses:
+        '200':
+          description: 审核完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidItemState'
+
+  /api/v1/admin/items/{itemId}/status:
+    patch:
+      tags: [Admin Items]
+      summary: 修改物品状态
+      operationId: updateItemStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemStatusRequest'
+      responses:
+        '200':
+          description: 状态修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+        '404':
+          $ref: '#/components/responses/ItemNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidItemState'
+
+  /api/v1/admin/claims/{claimId}/status:
+    patch:
+      tags: [Admin Items]
+      summary: 审核认领申请
+      description: 申请通过后，后端应在事务中更新申请状态和物品状态，避免同一物品出现多个通过的申请。
+      operationId: reviewClaim
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewClaimRequest'
+      responses:
+        '200':
+          description: 处理完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+        '404':
+          $ref: '#/components/responses/ClaimNotFound'
+        '409':
+          $ref: '#/components/responses/InvalidClaimState'
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin Users]
+      summary: 查询用户列表
+      operationId: adminListUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: keyword
+          in: query
+          description: 按学号或姓名搜索
+          schema:
+            type: string
+            maxLength: 100
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+      responses:
+        '200':
+          description: 用户列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+
+  /api/v1/admin/users/{userId}/role:
+    patch:
+      tags: [Admin Users]
+      summary: 修改用户角色
+      operationId: updateUserRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRoleRequest'
+      responses:
+        '200':
+          description: 角色修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /api/v1/admin/users/{userId}/status:
+    patch:
+      tags: [Admin Users]
+      summary: 启用或禁用用户
+      operationId: updateUserStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: 账号状态修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /api/v1/admin/announcements:
+    get:
+      tags: [Admin Announcements]
+      summary: 管理员查询公告
+      operationId: adminListAnnouncements
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: published
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 公告列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+
+    post:
+      tags: [Admin Announcements]
+      summary: 创建公告
+      operationId: createAnnouncement
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnnouncementRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+
+  /api/v1/admin/announcements/{announcementId}:
+    parameters:
+      - $ref: '#/components/parameters/AnnouncementId'
+    patch:
+      tags: [Admin Announcements]
+      summary: 修改公告
+      operationId: updateAnnouncement
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAnnouncementRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+        '404':
+          $ref: '#/components/responses/AnnouncementNotFound'
+
+    delete:
+      tags: [Admin Announcements]
+      summary: 删除公告
+      operationId: deleteAnnouncement
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/SystemAdminForbidden'
+        '404':
+          $ref: '#/components/responses/AnnouncementNotFound'
+
+  /api/v1/admin/statistics/overview:
+    get:
+      tags: [Admin Statistics]
+      summary: 查询系统统计总览
+      operationId: getStatisticsOverview
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 统计数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 页码，从 1 开始
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: 每页数量，最大 50
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      description: 物品 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    ClaimId:
+      name: claimId
+      in: path
+      required: true
+      description: 认领申请 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    UserId:
+      name: userId
+      in: path
+      required: true
+      description: 用户 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    AnnouncementId:
+      name: announcementId
+      in: path
+      required: true
+      description: 公告 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+  responses:
+    InvalidParameters:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10001
+            msg: 参数错误
+            data: null
+    Unauthorized:
+      description: 未登录或 Token 无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10002
+            msg: 未登录或登录已过期
+            data: null
+    Forbidden:
+      description: 已登录但无权操作该资源
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10003
+            msg: 无权操作该资源
+            data: null
+    AdminForbidden:
+      description: 不是失物招领管理员或系统管理员
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10010
+            msg: 需要管理员权限
+            data: null
+    SystemAdminForbidden:
+      description: 不是系统管理员
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10011
+            msg: 需要系统管理员权限
+            data: null
+    UsernameAlreadyExists:
+      description: 用户名已存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10007
+            msg: 用户名已存在
+            data: null
+    InvalidCredentials:
+      description: 账号或密码错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10008
+            msg: 账号或密码错误
+            data: null
+    DisabledUser:
+      description: 账号已禁用
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10009
+            msg: 账号已被禁用
+            data: null
+    ItemNotFound:
+      description: 物品不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 12001
+            msg: 物品不存在
+            data: null
+    InvalidItemState:
+      description: 物品当前状态不允许此操作
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 12002
+            msg: 物品当前状态不允许此操作
+            data: null
+    ClaimNotAllowed:
+      description: 当前物品不允许提交认领申请
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 13001
+            msg: 当前物品不允许提交认领申请
+            data: null
+    ClaimNotFound:
+      description: 认领申请不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 13002
+            msg: 认领申请不存在
+            data: null
+    InvalidClaimState:
+      description: 认领申请当前状态不允许此操作
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 13003
+            msg: 认领申请当前状态不允许此操作
+            data: null
+    UserNotFound:
+      description: 用户不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 14001
+            msg: 用户不存在
+            data: null
+    AnnouncementNotFound:
+      description: 公告不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 15001
+            msg: 公告不存在
+            data: null
+    FileTooLarge:
+      description: 图片超过大小限制
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 16001
+            msg: 图片超过大小限制
+            data: null
+
+  schemas:
+    UserRole:
+      type: string
+      enum: [student, lost_admin, system_admin]
+      description: 用户角色
+    UserStatus:
+      type: string
+      enum: [active, disabled]
+    ItemType:
+      type: string
+      enum: [lost, found]
+      description: lost=失物，found=招领
+    ItemCategory:
+      type: string
+      enum: [id_card, wallet, phone, computer, book, clothing, key, daily, other]
+    ReviewStatus:
+      type: string
+      enum: [pending, approved, rejected, offline]
+    ItemStatus:
+      type: string
+      enum: [open, claimed, resolved, closed]
+      description: open=待处理，claimed=认领处理中，resolved=已找回或已归还，closed=已关闭
+    ClaimStatus:
+      type: string
+      enum: [pending, approved, rejected, cancelled]
+
+    User:
+      type: object
+      required: [id, username, name, role, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: '20260001'
+        name:
+          type: string
+          example: 张三
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-09-14T08:00:00+08:00'
+
+    Item:
+      type: object
+      required:
+        [id, publisherId, type, title, description, category, location, contact, reviewStatus, itemStatus, imageUrls, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        publisherId:
+          type: integer
+          format: int64
+          example: 2
+        publisherName:
+          type: string
+          example: 李同学
+        type:
+          $ref: '#/components/schemas/ItemType'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: 黑色校园卡
+        description:
+          type: string
+          maxLength: 2000
+          example: 在图书馆一楼自习区捡到。
+        category:
+          $ref: '#/components/schemas/ItemCategory'
+        location:
+          type: string
+          maxLength: 100
+          example: 图书馆一楼
+        lostAt:
+          type: string
+          format: date-time
+          nullable: true
+        contact:
+          type: string
+          maxLength: 100
+          example: 请通过平台联系
+        imageUrls:
+          type: array
+          maxItems: 6
+          items:
+            type: string
+            format: uri
+        reviewStatus:
+          $ref: '#/components/schemas/ReviewStatus'
+        rejectReason:
+          type: string
+          nullable: true
+        itemStatus:
+          $ref: '#/components/schemas/ItemStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Claim:
+      type: object
+      required: [id, itemId, applicantId, applicantName, description, contact, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        itemId:
+          type: integer
+          format: int64
+          example: 1
+        applicantId:
+          type: integer
+          format: int64
+          example: 3
+        applicantName:
+          type: string
+          example: 王同学
+        description:
+          type: string
+          maxLength: 1000
+          example: 卡片背面有我的姓名和照片。
+        contact:
+          type: string
+          maxLength: 100
+          example: '20260003'
+        status:
+          $ref: '#/components/schemas/ClaimStatus'
+        reviewReason:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: integer
+          format: int64
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Announcement:
+      type: object
+      required: [id, title, content, published, authorId, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: 失物招领平台使用说明
+        content:
+          type: string
+          maxLength: 10000
+          example: 请勿在公开内容中填写身份证号等敏感信息。
+        published:
+          type: boolean
+          example: true
+        authorId:
+          type: integer
+          format: int64
+          example: 10
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required: [username, name, password]
+      properties:
+        username:
+          type: string
+          pattern: '^[0-9]+$'
+          minLength: 1
+          maxLength: 30
+          example: '20260001'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: 张三
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 32
+          example: password123
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: '20260001'
+        password:
+          type: string
+          format: password
+          example: password123
+
+    LoginData:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxx.yyy
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Token 有效期，单位为秒
+          example: 7200
+        user:
+          $ref: '#/components/schemas/User'
+
+    CreateItemRequest:
+      type: object
+      required: [type, title, description, category, location, contact]
+      properties:
+        type:
+          $ref: '#/components/schemas/ItemType'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        category:
+          $ref: '#/components/schemas/ItemCategory'
+        location:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lostAt:
+          type: string
+          format: date-time
+          nullable: true
+        contact:
+          type: string
+          minLength: 1
+          maxLength: 100
+        imageUrls:
+          type: array
+          maxItems: 6
+          items:
+            type: string
+            format: uri
+
+    UpdateItemRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        category:
+          $ref: '#/components/schemas/ItemCategory'
+        location:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lostAt:
+          type: string
+          format: date-time
+          nullable: true
+        contact:
+          type: string
+          minLength: 1
+          maxLength: 100
+        imageUrls:
+          type: array
+          maxItems: 6
+          items:
+            type: string
+            format: uri
+
+    CreateClaimRequest:
+      type: object
+      required: [description, contact]
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          example: 我可以提供物品的具体特征作为证明。
+        contact:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: '20260003'
+
+    ReviewItemRequest:
+      type: object
+      required: [reviewStatus]
+      properties:
+        reviewStatus:
+          type: string
+          enum: [approved, rejected, offline]
+        rejectReason:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    UpdateItemStatusRequest:
+      type: object
+      required: [itemStatus]
+      properties:
+        itemStatus:
+          $ref: '#/components/schemas/ItemStatus'
+
+    ReviewClaimRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+        reviewReason:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    UpdateUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    UpdateUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    CreateAnnouncementRequest:
+      type: object
+      required: [title, content, published]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        published:
+          type: boolean
+          default: false
+
+    UpdateAnnouncementRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        published:
+          type: boolean
+
+    PageMeta:
+      type: object
+      required: [page, pageSize, total, totalPages]
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          format: int64
+          example: 23
+        totalPages:
+          type: integer
+          example: 3
+
+    ErrorResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          description: 业务错误码，0 表示成功
+          example: 10001
+        msg:
+          type: string
+          description: 与 code 一一对应的固定错误消息
+          example: 参数错误
+        data:
+          type: object
+          nullable: true
+          description: 错误时固定为 null
+          example: null
+
+    EmptyDataResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          nullable: true
+          example: null
+
+    HealthResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              example: ok
+
+    UserResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/User'
+
+    LoginResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/LoginData'
+
+    ItemResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/Item'
+
+    ItemPageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [items, meta]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Item'
+            meta:
+              $ref: '#/components/schemas/PageMeta'
+
+    ClaimResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/Claim'
+
+    ClaimPageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [claims, meta]
+          properties:
+            claims:
+              type: array
+              items:
+                $ref: '#/components/schemas/Claim'
+            meta:
+              $ref: '#/components/schemas/PageMeta'
+
+    AnnouncementResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/Announcement'
+
+    AnnouncementPageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [announcements, meta]
+          properties:
+            announcements:
+              type: array
+              items:
+                $ref: '#/components/schemas/Announcement'
+            meta:
+              $ref: '#/components/schemas/PageMeta'
+
+    UserPageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [users, meta]
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            meta:
+              $ref: '#/components/schemas/PageMeta'
+
+    ImageUploadResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [url]
+          properties:
+            url:
+              type: string
+              format: uri
+              example: https://cdn.example.com/items/1/image-1.jpg
+
+    StatisticsResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [userCount, itemCount, pendingItemCount, claimCount, resolvedItemCount]
+          properties:
+            userCount:
+              type: integer
+              format: int64
+              example: 1200
+            itemCount:
+              type: integer
+              format: int64
+              example: 350
+            pendingItemCount:
+              type: integer
+              format: int64
+              example: 12
+            claimCount:
+              type: integer
+              format: int64
+              example: 87
+            resolvedItemCount:
+              type: integer
+              format: int64
+              example: 210
+            itemsByType:
+              type: object
+              additionalProperties:
+                type: integer
+                format: int64
