@@ -72,9 +72,9 @@ func ListPublicItems(q ItemListQuery) ([]model.Item, util.PageMeta, *response.Er
 		return nil, util.PageMeta{}, response.ErrInternal
 	}
 
-	order := "created_at DESC" // 默认 latest
+	order := "created_at DESC, id DESC" // 默认 latest；id 作次级键保证同秒创建时顺序稳定
 	if q.Sort == "oldest" {
-		order = "created_at ASC"
+		order = "created_at ASC, id ASC"
 	}
 
 	var items []model.Item
