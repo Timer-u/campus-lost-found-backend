@@ -1,6 +1,6 @@
 package model
 
-// User 用户表，username 即学号（纯数字），见 docs/openapi.yaml
+// User 用户表，username 即学号（12 位纯数字），见 docs/openapi.yaml
 type User struct {
 	Base
 	Username     string `gorm:"type:varchar(32);unique;not null" json:"username"`
