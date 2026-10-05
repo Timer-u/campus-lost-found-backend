@@ -10,7 +10,7 @@ import (
 
 // registerRequest 注册参数，校验规则与 docs/openapi.yaml 的 RegisterRequest 一致
 type registerRequest struct {
-	Username string `json:"username" binding:"required,numeric,max=30"`
+	Username string `json:"username" binding:"required,numeric,len=12"`
 	Name     string `json:"name" binding:"required,max=50"`
 	Password string `json:"password" binding:"required,min=8,max=32"`
 }

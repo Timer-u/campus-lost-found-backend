@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"regexp"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -19,8 +20,15 @@ type LoginResult struct {
 	User      *model.User `json:"user"`
 }
 
+// 学号固定为 12 位纯数字（如 302026315155），具体分段含义不做校验
+var studentIDRegexp = regexp.MustCompile(`^[0-9]{12}$`)
+
 // Register 注册学生账号：学号查重，密码 bcrypt 加密后入库
 func Register(username, name, password string) (*model.User, *response.Errno) {
+	if !studentIDRegexp.MatchString(username) {
+		return nil, response.ErrInvalidParams.WithMsg("学号必须为 12 位数字")
+	}
+
 	var count int64
 	if err := model.DB.Model(&model.User{}).Where("username = ?", username).Count(&count).Error; err != nil {
 		return nil, response.ErrInternal
