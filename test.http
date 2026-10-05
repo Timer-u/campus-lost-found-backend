@@ -28,8 +28,14 @@ Authorization: Bearer <accessToken>
 POST http://localhost:8080/api/v1/auth/logout
 Authorization: Bearer <accessToken>
 
-### 6. 测试获取物品列表
-GET http://localhost:8080/api/v1/items
+### 6. 测试获取物品列表（支持 keyword/type/category/itemStatus/location/sort/page/pageSize）
+GET http://localhost:8080/api/v1/items?page=1&pageSize=10&sort=latest
 
-### 7. 测试获取物品详情
+### 7. 测试关键词搜索（标题/描述/地点模糊匹配）
+GET http://localhost:8080/api/v1/items?keyword=校园卡
+
+### 8. 测试筛选（类型 + 分类 + 状态组合）
+GET http://localhost:8080/api/v1/items?type=lost&category=id_card&itemStatus=open
+
+### 9. 测试获取物品详情
 GET http://localhost:8080/api/v1/items/1
