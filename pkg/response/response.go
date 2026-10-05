@@ -15,6 +15,15 @@ func Success(c *gin.Context, data interface{}) {
 	})
 }
 
+// Created 201 成功响应（如注册接口）
+func Created(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusCreated, gin.H{
+		"code": 0,
+		"msg":  "success",
+		"data": data,
+	})
+}
+
 // Fail 按错误码返回统一失败响应，HTTP 状态码与业务码同时传递
 func Fail(c *gin.Context, e *Errno) {
 	c.JSON(e.HTTP, gin.H{
