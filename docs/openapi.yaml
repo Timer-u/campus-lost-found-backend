@@ -1088,7 +1088,8 @@ components:
           example: 1
         username:
           type: string
-          example: '20260001'
+          description: 学号，12 位纯数字
+          example: '302026315155'
         name:
           type: string
           example: 张三
@@ -1242,10 +1243,11 @@ components:
       properties:
         username:
           type: string
-          pattern: '^[0-9]+$'
-          minLength: 1
-          maxLength: 30
-          example: '20260001'
+          description: 学号，12 位纯数字（含学生类别、录取年份、专业编号等字段，具体含义不做校验）
+          pattern: '^[0-9]{12}$'
+          minLength: 12
+          maxLength: 12
+          example: '302026315155'
         name:
           type: string
           minLength: 1
@@ -1264,7 +1266,8 @@ components:
       properties:
         username:
           type: string
-          example: '20260001'
+          description: 学号，12 位纯数字
+          example: '302026315155'
         password:
           type: string
           format: password
