@@ -1,27 +1,35 @@
 ### 1. 测试健康检查
 GET http://localhost:8080/health
 
-### 2. 测试登录接口（用预置账号 20260001/123456）
-POST http://localhost:8080/api/v1/auth/login
-Content-Type: application/json
-
-{
-    "username": "20260001",
-    "password": "123456"
-}
-
-### 3. 测试注册接口
+### 2. 测试注册接口（用户名必须纯数字，密码 8-32 位）
 POST http://localhost:8080/api/v1/auth/register
 Content-Type: application/json
 
 {
     "username": "20260002",
     "name": "张三",
-    "password": "123456"
+    "password": "password123"
 }
 
-### 4. 测试获取物品列表
+### 3. 测试登录接口（用上面注册的账号）
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+    "username": "20260002",
+    "password": "password123"
+}
+
+### 4. 测试获取当前用户（把 <accessToken> 换成登录返回的 token）
+GET http://localhost:8080/api/v1/auth/me
+Authorization: Bearer <accessToken>
+
+### 5. 测试退出登录
+POST http://localhost:8080/api/v1/auth/logout
+Authorization: Bearer <accessToken>
+
+### 6. 测试获取物品列表
 GET http://localhost:8080/api/v1/items
 
-### 5. 测试获取物品详情
+### 7. 测试获取物品详情
 GET http://localhost:8080/api/v1/items/1

@@ -25,11 +25,18 @@ func SetupRouter() *gin.Engine {
 	// 业务路由：/api/v1，与 docs/openapi.yaml 保持一致
 	apiV1 := r.Group("/api/v1")
 	{
-		// 认证：注册、登录
+		// 认证：注册、登录（公开）；me、logout（需登录）
 		authGroup := apiV1.Group("/auth")
 		{
 			authGroup.POST("/register", controller.Register)
 			authGroup.POST("/login", controller.Login)
+
+			authed := authGroup.Group("")
+			authed.Use(middleware.JWTAuth())
+			{
+				authed.GET("/me", controller.GetCurrentUser)
+				authed.POST("/logout", controller.Logout)
+			}
 		}
 
 		// 物品：公开查询
@@ -37,12 +44,7 @@ func SetupRouter() *gin.Engine {
 		apiV1.GET("/items/:itemId", controller.GetItemDetail)
 	}
 
-	// 需鉴权接口组骨架（JWT 中间件已就绪，对应接口交付时启用）：
-	// authed := apiV1.Group("")
-	// authed.Use(middleware.JWTAuth())
-	// {
-	// 	// 普通登录用户接口
-	// }
+	// 管理员接口组骨架（对应接口交付时启用）：
 	// admin := apiV1.Group("/admin")
 	// admin.Use(middleware.JWTAuth(), middleware.RequireLostAdmin())
 	// {
