@@ -14,7 +14,7 @@ func TestLoginResultJSONShape(t *testing.T) {
 		Token:     "header.payload.signature",
 		TokenType: "Bearer",
 		ExpiresIn: 7200,
-		User:      &model.User{Username: "20260001", Name: "张三", Role: "student", Status: "active"},
+		User:      &model.User{Username: "302026315155", Name: "张三", Role: "student", Status: "active"},
 	}
 
 	data, err := json.Marshal(result)
