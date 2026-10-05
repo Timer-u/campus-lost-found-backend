@@ -26,8 +26,8 @@ func InitDB() {
 	)
 
 	var err error
-	// 连接数据库
-	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	// 连接数据库；TranslateError 把 MySQL 唯一键冲突翻译为 gorm.ErrDuplicatedKey
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{TranslateError: true})
 	if err != nil {
 		log.Fatalf("连接数据库失败: %v", err)
 	}
