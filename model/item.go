@@ -57,5 +57,7 @@ type Item struct {
 	RejectReason string     `gorm:"type:varchar(255)" json:"rejectReason,omitempty"`
 	ItemStatus   string     `gorm:"type:varchar(20);default:'open'" json:"itemStatus"`
 	UserID       uint       `gorm:"not null" json:"publisherId"`
-	User         User       `gorm:"foreignKey:UserID" json:"-"`
+	// PublisherName 发布者姓名，查询时由 service 通过 Preload("User") 填充
+	PublisherName string `gorm:"-" json:"publisherName"`
+	User          User   `gorm:"foreignKey:UserID" json:"-"`
 }
