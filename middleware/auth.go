@@ -26,9 +26,24 @@ func JWTAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.Set(CtxUserID, claims.UserID)
-		c.Set(CtxUsername, claims.Username)
-		c.Set(CtxRole, claims.Role)
+		setClaims(c, claims)
 		c.Next()
 	}
+}
+
+// OptionalJWT 尝试解析登录态但从不拦截：token 有效时写入上下文，匿名请求以未登录身份继续
+func OptionalJWT() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if claims, err := auth.ParseToken(token); err == nil {
+			setClaims(c, claims)
+		}
+		c.Next()
+	}
+}
+
+func setClaims(c *gin.Context, claims *auth.Claims) {
+	c.Set(CtxUserID, claims.UserID)
+	c.Set(CtxUsername, claims.Username)
+	c.Set(CtxRole, claims.Role)
 }

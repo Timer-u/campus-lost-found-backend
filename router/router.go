@@ -42,9 +42,9 @@ func SetupRouter() *gin.Engine {
 			}
 		}
 
-		// 物品：公开查询
+		// 物品：公开查询（详情带可选登录态，发布者本人可见自己的待审核物品）
 		apiV1.GET("/items", controller.GetItemList)
-		apiV1.GET("/items/:itemId", controller.GetItemDetail)
+		apiV1.GET("/items/:itemId", middleware.OptionalJWT(), controller.GetItemDetail)
 
 		// 物品：发布/编辑/删除/我的发布与图片上传（需登录）
 		authedItems := apiV1.Group("")
