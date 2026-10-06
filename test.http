@@ -82,3 +82,25 @@ Content-Type: image/png
 
 < ./test.png
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 15. 提交认领申请（仅审核通过且开放中的招领可申请；发布者本人与重复申请返回 409/13001）
+POST http://localhost:8080/api/v1/items/2/claims
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+    "description": "这是我掉的伞，伞面有白色条纹，把手有个小缺口",
+    "contact": "QQ: 999888"
+}
+
+### 16. 查看物品的认领申请（仅发布者或管理员可见）
+GET http://localhost:8080/api/v1/items/2/claims
+Authorization: Bearer <accessToken>
+
+### 17. 我的认领申请（status 可选 pending/approved/rejected/cancelled）
+GET http://localhost:8080/api/v1/me/claims?status=pending
+Authorization: Bearer <accessToken>
+
+### 18. 取消自己的认领申请（仅 pending 可取消）
+POST http://localhost:8080/api/v1/claims/1/cancel
+Authorization: Bearer <accessToken>
