@@ -104,3 +104,35 @@ Authorization: Bearer <accessToken>
 ### 18. 取消自己的认领申请（仅 pending 可取消）
 POST http://localhost:8080/api/v1/claims/1/cancel
 Authorization: Bearer <accessToken>
+
+### 19. 管理员物品列表（lost_admin/system_admin；reviewStatus/itemStatus/keyword 筛选，待审核优先）
+GET http://localhost:8080/api/v1/admin/items
+Authorization: Bearer <adminAccessToken>
+
+### 20. 审核物品（approved/rejected/offline，拒绝时建议附 rejectReason）
+PATCH http://localhost:8080/api/v1/admin/items/5/review
+Authorization: Bearer <adminAccessToken>
+Content-Type: application/json
+
+{
+    "reviewStatus": "approved"
+}
+
+### 21. 修改物品状态（open/claimed/resolved/closed，仅审核通过的物品）
+PATCH http://localhost:8080/api/v1/admin/items/1/status
+Authorization: Bearer <adminAccessToken>
+Content-Type: application/json
+
+{
+    "itemStatus": "claimed"
+}
+
+### 22. 审核认领申请（通过时事务内同步物品为 claimed；同一物品仅允许一个通过）
+PATCH http://localhost:8080/api/v1/admin/claims/2/status
+Authorization: Bearer <adminAccessToken>
+Content-Type: application/json
+
+{
+    "status": "approved",
+    "reviewReason": "描述与物品信息吻合，予以通过"
+}
