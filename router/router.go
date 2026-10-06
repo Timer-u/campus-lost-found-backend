@@ -56,6 +56,16 @@ func SetupRouter() *gin.Engine {
 			authedItems.GET("/me/items", controller.ListMyItems)
 			authedItems.POST("/uploads/images", controller.UploadImage)
 		}
+
+		// 认领申请：提交/查看/取消（需登录）
+		authedClaims := apiV1.Group("")
+		authedClaims.Use(middleware.JWTAuth())
+		{
+			authedClaims.POST("/items/:itemId/claims", controller.CreateClaim)
+			authedClaims.GET("/items/:itemId/claims", controller.ListItemClaims)
+			authedClaims.GET("/me/claims", controller.ListMyClaims)
+			authedClaims.POST("/claims/:claimId/cancel", controller.CancelClaim)
+		}
 	}
 
 	// 管理员接口组骨架（对应接口交付时启用）：
