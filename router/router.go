@@ -68,12 +68,15 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	// 管理员接口组骨架（对应接口交付时启用）：
-	// admin := apiV1.Group("/admin")
-	// admin.Use(middleware.JWTAuth(), middleware.RequireLostAdmin())
-	// {
-	// 	// 失物招领管理员接口；用户/公告/统计类接口用 middleware.RequireSystemAdmin()
-	// }
+	// 管理员接口：物品与认领审核（lost_admin / system_admin）
+	admin := apiV1.Group("/admin")
+	admin.Use(middleware.JWTAuth(), middleware.RequireLostAdmin())
+	{
+		admin.GET("/items", controller.AdminListItems)
+		admin.PATCH("/items/:itemId/review", controller.AdminReviewItem)
+		admin.PATCH("/items/:itemId/status", controller.AdminUpdateItemStatus)
+		admin.PATCH("/claims/:claimId/status", controller.AdminReviewClaim)
+	}
 
 	return r
 }
