@@ -78,5 +78,31 @@ func SetupRouter() *gin.Engine {
 		admin.PATCH("/claims/:claimId/status", controller.AdminReviewClaim)
 	}
 
+	// 系统管理员接口：用户管理（system_admin）
+	sysAdmin := apiV1.Group("/admin/users")
+	sysAdmin.Use(middleware.JWTAuth(), middleware.RequireSystemAdmin())
+	{
+		sysAdmin.GET("", controller.AdminListUsers)
+		sysAdmin.PATCH("/:userId/role", controller.AdminUpdateUserRole)
+		sysAdmin.PATCH("/:userId/status", controller.AdminUpdateUserStatus)
+	}
+
+	// 系统管理员接口：公告管理（system_admin）
+	annAdmin := apiV1.Group("/admin/announcements")
+	annAdmin.Use(middleware.JWTAuth(), middleware.RequireSystemAdmin())
+	{
+		annAdmin.GET("", controller.AdminListAnnouncements)
+		annAdmin.POST("", controller.AdminCreateAnnouncement)
+		annAdmin.PATCH("/:announcementId", controller.AdminUpdateAnnouncement)
+		annAdmin.DELETE("/:announcementId", controller.AdminDeleteAnnouncement)
+	}
+
+	// 统计总览（lost_admin / system_admin）
+	apiV1.GET("/admin/statistics/overview",
+		middleware.JWTAuth(), middleware.RequireLostAdmin(), controller.GetStatisticsOverview)
+
+	// 公开公告列表
+	apiV1.GET("/announcements", controller.ListPublicAnnouncements)
+
 	return r
 }
