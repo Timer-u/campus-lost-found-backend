@@ -15,6 +15,9 @@ func SetupRouter() *gin.Engine {
 	// 全局中间件：日志、panic 恢复（统一返回 10000）、跨域
 	r.Use(gin.Logger(), middleware.Recovery(), cors.Default())
 
+	// 图片静态托管：上传接口返回的 /uploads/xxx 直接由 Gin 提供
+	r.Static("/uploads", "uploads")
+
 	// 健康检查接口
 	r.GET("/health", func(c *gin.Context) {
 		response.Success(c, gin.H{
@@ -42,6 +45,17 @@ func SetupRouter() *gin.Engine {
 		// 物品：公开查询
 		apiV1.GET("/items", controller.GetItemList)
 		apiV1.GET("/items/:itemId", controller.GetItemDetail)
+
+		// 物品：发布/编辑/删除/我的发布与图片上传（需登录）
+		authedItems := apiV1.Group("")
+		authedItems.Use(middleware.JWTAuth())
+		{
+			authedItems.POST("/items", controller.CreateItem)
+			authedItems.PATCH("/items/:itemId", controller.UpdateItem)
+			authedItems.DELETE("/items/:itemId", controller.DeleteItem)
+			authedItems.GET("/me/items", controller.ListMyItems)
+			authedItems.POST("/uploads/images", controller.UploadImage)
+		}
 	}
 
 	// 管理员接口组骨架（对应接口交付时启用）：
