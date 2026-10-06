@@ -39,3 +39,46 @@ GET http://localhost:8080/api/v1/items?type=lost&category=id_card&itemStatus=ope
 
 ### 9. 测试获取物品详情
 GET http://localhost:8080/api/v1/items/1
+
+### 10. 发布物品（需登录，默认进入待审核）
+POST http://localhost:8080/api/v1/items
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+    "type": "lost",
+    "title": "丢失的校园卡",
+    "description": "在图书馆二楼自习区丢失校园卡一张",
+    "category": "id_card",
+    "location": "图书馆二楼",
+    "contact": "微信: test2026"
+}
+
+### 11. 编辑自己的发布（至少一个字段，修改后回到待审核）
+PATCH http://localhost:8080/api/v1/items/1
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+    "location": "图书馆三楼"
+}
+
+### 12. 删除自己的发布
+DELETE http://localhost:8080/api/v1/items/1
+Authorization: Bearer <accessToken>
+
+### 13. 我的发布（reviewStatus/itemStatus 筛选）
+GET http://localhost:8080/api/v1/me/items?reviewStatus=pending
+Authorization: Bearer <accessToken>
+
+### 14. 上传图片（form-data 字段 file，单张不超过 5MB，返回图片 URL）
+POST http://localhost:8080/api/v1/uploads/images
+Authorization: Bearer <accessToken>
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test.png"
+Content-Type: image/png
+
+< ./test.png
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
