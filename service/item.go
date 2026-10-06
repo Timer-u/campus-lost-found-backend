@@ -91,15 +91,17 @@ func ListPublicItems(q ItemListQuery) ([]model.Item, util.PageMeta, *response.Er
 	return items, util.NewPageMeta(int64(q.Page), int64(q.PageSize), total), nil
 }
 
-// GetPublicItem 物品详情：未审核通过的物品对公众不可见
-func GetPublicItem(id uint) (*model.Item, *response.Errno) {
+// GetItemDetail 物品详情：审核通过的物品对所有人可见，未审核通过的仅发布者本人可见
+func GetItemDetail(viewerID, id uint) (*model.Item, *response.Errno) {
 	var item model.Item
-	if err := model.DB.Preload("User").
-		Where("review_status = ?", "approved").First(&item, id).Error; err != nil {
+	if err := model.DB.Preload("User").First(&item, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, response.ErrItemNotFound
 		}
 		return nil, response.ErrInternal
+	}
+	if item.ReviewStatus != "approved" && item.UserID != viewerID {
+		return nil, response.ErrItemNotFound
 	}
 	item.PublisherName = item.User.Name
 	return &item, nil

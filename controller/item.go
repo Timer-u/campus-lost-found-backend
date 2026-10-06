@@ -34,7 +34,7 @@ func GetItemList(c *gin.Context) {
 	response.Success(c, gin.H{"items": items, "meta": meta})
 }
 
-// GetItemDetail 公开物品详情
+// GetItemDetail 公开物品详情：未审核通过的物品仅发布者本人可见
 func GetItemDetail(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("itemId"), 10, 64)
 	if err != nil {
@@ -42,7 +42,7 @@ func GetItemDetail(c *gin.Context) {
 		return
 	}
 
-	item, eno := service.GetPublicItem(uint(id))
+	item, eno := service.GetItemDetail(currentUserID(c), uint(id))
 	if eno != nil {
 		response.Fail(c, eno)
 		return
