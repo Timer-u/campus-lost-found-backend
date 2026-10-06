@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -10,14 +11,15 @@ import (
 	"campus-lost-found-backend/pkg/util"
 )
 
-// 物品公开接口允许的枚举值，与 docs/openapi.yaml 保持一致
+// 物品接口允许的枚举值，与 docs/openapi.yaml 保持一致
 var (
 	itemTypeAllowed     = map[string]bool{"lost": true, "found": true}
 	itemCategoryAllowed = map[string]bool{
 		"id_card": true, "wallet": true, "phone": true, "computer": true, "book": true,
 		"clothing": true, "key": true, "daily": true, "other": true,
 	}
-	itemStatusAllowed = map[string]bool{"open": true, "claimed": true, "resolved": true, "closed": true}
+	itemStatusAllowed   = map[string]bool{"open": true, "claimed": true, "resolved": true, "closed": true}
+	reviewStatusAllowed = map[string]bool{"pending": true, "approved": true, "rejected": true, "offline": true}
 )
 
 // ItemListQuery 物品列表查询参数
@@ -101,4 +103,170 @@ func GetPublicItem(id uint) (*model.Item, *response.Errno) {
 	}
 	item.PublisherName = item.User.Name
 	return &item, nil
+}
+
+// CreateItemInput 发布物品参数，字段约束由 controller binding 校验
+type CreateItemInput struct {
+	Type        string
+	Title       string
+	Description string
+	Category    string
+	Location    string
+	LostAt      *time.Time
+	Contact     string
+	ImageURLs   []string
+}
+
+// CreateItem 发布失物/招领：默认进入待审核，等待管理员审核通过后公开
+func CreateItem(userID uint, in CreateItemInput) (*model.Item, *response.Errno) {
+	if len(in.ImageURLs) > 6 {
+		return nil, response.ErrInvalidParams.WithMsg("每个物品最多引用 6 张图片")
+	}
+
+	item := &model.Item{
+		Type:         in.Type,
+		Title:        in.Title,
+		Description:  in.Description,
+		Category:     in.Category,
+		Location:     in.Location,
+		LostAt:       in.LostAt,
+		Contact:      in.Contact,
+		ImageURLs:    model.ImageList(in.ImageURLs),
+		ReviewStatus: "pending",
+		ItemStatus:   "open",
+		UserID:       userID,
+	}
+	if item.ImageURLs == nil {
+		item.ImageURLs = model.ImageList{}
+	}
+	if err := model.DB.Create(item).Error; err != nil {
+		return nil, response.ErrInternal
+	}
+	if user, eno := GetByID(userID); eno == nil {
+		item.PublisherName = user.Name
+	}
+	return item, nil
+}
+
+// UpdateItemInput 编辑物品参数：指针非 nil 表示该字段需要更新
+type UpdateItemInput struct {
+	Title       *string
+	Description *string
+	Category    *string
+	Location    *string
+	LostAt      *time.Time
+	Contact     *string
+	ImageURLs   *[]string
+}
+
+// UpdateItem 编辑自己的发布：仅发布者可操作；修改后的物品统一回到待审核重新走审核流程
+func UpdateItem(userID, itemID uint, in UpdateItemInput) (*model.Item, *response.Errno) {
+	var item model.Item
+	if err := model.DB.First(&item, itemID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.ErrItemNotFound
+		}
+		return nil, response.ErrInternal
+	}
+	if item.UserID != userID {
+		return nil, response.ErrForbidden
+	}
+	if item.ItemStatus == "closed" {
+		return nil, response.ErrItemStatusNotAllowed
+	}
+
+	updates := map[string]any{}
+	if in.Title != nil {
+		updates["title"] = *in.Title
+	}
+	if in.Description != nil {
+		updates["description"] = *in.Description
+	}
+	if in.Category != nil {
+		updates["category"] = *in.Category
+	}
+	if in.Location != nil {
+		updates["location"] = *in.Location
+	}
+	if in.LostAt != nil {
+		updates["lost_at"] = *in.LostAt
+	}
+	if in.Contact != nil {
+		updates["contact"] = *in.Contact
+	}
+	if in.ImageURLs != nil {
+		if len(*in.ImageURLs) > 6 {
+			return nil, response.ErrInvalidParams.WithMsg("每个物品最多引用 6 张图片")
+		}
+		updates["image_urls"] = model.ImageList(*in.ImageURLs)
+	}
+
+	if len(updates) > 0 {
+		updates["review_status"] = "pending"
+		if err := model.DB.Model(&item).Updates(updates).Error; err != nil {
+			return nil, response.ErrInternal
+		}
+	}
+
+	if err := model.DB.Preload("User").First(&item, itemID).Error; err != nil {
+		return nil, response.ErrInternal
+	}
+	item.PublisherName = item.User.Name
+	return &item, nil
+}
+
+// DeleteItem 删除自己的发布（软删除）
+func DeleteItem(userID, itemID uint) *response.Errno {
+	var item model.Item
+	if err := model.DB.First(&item, itemID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.ErrItemNotFound
+		}
+		return response.ErrInternal
+	}
+	if item.UserID != userID {
+		return response.ErrForbidden
+	}
+	if item.ItemStatus == "closed" {
+		return response.ErrItemStatusNotAllowed
+	}
+	if err := model.DB.Delete(&item).Error; err != nil {
+		return response.ErrInternal
+	}
+	return nil
+}
+
+// ListMyItems 我的发布：reviewStatus/itemStatus 筛选 + 分页
+func ListMyItems(userID uint, reviewStatus, itemStatus string, page, pageSize int) ([]model.Item, util.PageMeta, *response.Errno) {
+	if reviewStatus != "" && !reviewStatusAllowed[reviewStatus] {
+		return nil, util.PageMeta{}, response.ErrInvalidParams
+	}
+	if itemStatus != "" && !itemStatusAllowed[itemStatus] {
+		return nil, util.PageMeta{}, response.ErrInvalidParams
+	}
+
+	query := model.DB.Model(&model.Item{}).Where("user_id = ?", userID)
+	if reviewStatus != "" {
+		query = query.Where("review_status = ?", reviewStatus)
+	}
+	if itemStatus != "" {
+		query = query.Where("item_status = ?", itemStatus)
+	}
+
+	base := query.Session(&gorm.Session{})
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, util.PageMeta{}, response.ErrInternal
+	}
+
+	var items []model.Item
+	if err := base.Preload("User").Order("created_at DESC, id DESC").
+		Offset((page - 1) * pageSize).Limit(pageSize).Find(&items).Error; err != nil {
+		return nil, util.PageMeta{}, response.ErrInternal
+	}
+	for i := range items {
+		items[i].PublisherName = items[i].User.Name
+	}
+
+	return items, util.NewPageMeta(int64(page), int64(pageSize), total), nil
 }
