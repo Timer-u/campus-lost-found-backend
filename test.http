@@ -136,3 +136,60 @@ Content-Type: application/json
     "status": "approved",
     "reviewReason": "描述与物品信息吻合，予以通过"
 }
+
+### 23. 管理员用户列表（system_admin；keyword 按学号/姓名搜索，role/status 筛选）
+GET http://localhost:8080/api/v1/admin/users
+Authorization: Bearer <systemAdminToken>
+
+### 24. 修改用户角色（student/lost_admin/system_admin）
+PATCH http://localhost:8080/api/v1/admin/users/5/role
+Authorization: Bearer <systemAdminToken>
+Content-Type: application/json
+
+{
+    "role": "lost_admin"
+}
+
+### 25. 启用/禁用用户（禁用后该账号登录返回 403/10009）
+PATCH http://localhost:8080/api/v1/admin/users/5/status
+Authorization: Bearer <systemAdminToken>
+Content-Type: application/json
+
+{
+    "status": "disabled"
+}
+
+### 26. 公开公告列表（仅已发布的公告）
+GET http://localhost:8080/api/v1/announcements
+
+### 27. 管理员公告列表（published=true/false 筛选，含未发布）
+GET http://localhost:8080/api/v1/admin/announcements?published=false
+Authorization: Bearer <systemAdminToken>
+
+### 28. 创建公告
+POST http://localhost:8080/api/v1/admin/announcements
+Authorization: Bearer <systemAdminToken>
+Content-Type: application/json
+
+{
+    "title": "平台使用须知",
+    "content": "请勿在公开内容中填写身份证号等敏感信息。",
+    "published": true
+}
+
+### 29. 修改公告（至少一个字段；published 控制上架/下架）
+PATCH http://localhost:8080/api/v1/admin/announcements/1
+Authorization: Bearer <systemAdminToken>
+Content-Type: application/json
+
+{
+    "published": false
+}
+
+### 30. 删除公告
+DELETE http://localhost:8080/api/v1/admin/announcements/1
+Authorization: Bearer <systemAdminToken>
+
+### 31. 统计总览（lost_admin/system_admin 均可）
+GET http://localhost:8080/api/v1/admin/statistics/overview
+Authorization: Bearer <adminAccessToken>
