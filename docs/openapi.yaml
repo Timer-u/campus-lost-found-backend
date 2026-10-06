@@ -223,6 +223,7 @@ paths:
     get:
       tags: [Items]
       summary: 查询物品详情
+      description: 审核通过的物品对所有人可见；未审核通过的物品仅发布者本人可见。
       operationId: getItem
       security: []
       responses:
