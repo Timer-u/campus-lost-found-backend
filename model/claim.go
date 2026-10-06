@@ -10,4 +10,7 @@ type Claim struct {
 	Status       string `gorm:"type:varchar(20);default:'pending'" json:"status"`
 	ReviewReason string `gorm:"type:varchar(255)" json:"reviewReason,omitempty"`
 	ReviewedBy   *uint  `json:"reviewedBy,omitempty"`
+	// ApplicantName 申请人姓名，查询时由 service 通过 Preload("Applicant") 填充
+	ApplicantName string `gorm:"-" json:"applicantName"`
+	Applicant     User   `gorm:"foreignKey:ApplicantID" json:"-"`
 }
