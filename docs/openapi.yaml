@@ -9,6 +9,7 @@ info:
     - 成功响应统一使用 code=0，失败响应使用非 0 业务错误码。
     - 一个业务错误码只对应一个固定 msg；HTTP 状态码仍用于表达协议层结果。
     - code=10000 表示服务器内部错误（未预期异常的兜底），不属于业务错误码序列。
+    - code=10004：管理员账号不允许自我注销。
     - 登录接口返回 JWT，后续请求使用 Authorization: Bearer <token>。
     - 普通用户只能操作自己的发布和申请；角色权限必须由后端校验。
     - 非管理员访问管理员接口返回 10010；lost_admin 访问仅 system_admin 可用的接口返回 10011。
@@ -138,6 +139,59 @@ paths:
                 $ref: '#/components/schemas/EmptyDataResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/profile:
+    patch:
+      tags: [Auth]
+      summary: 修改个人信息
+      operationId: updateProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/account:
+    delete:
+      tags: [Auth]
+      summary: 注销账号
+      description: 软删除当前账号并下架名下全部物品，待审核的认领申请自动取消，学号释放后可重新注册。管理员账号不允许注销。注销前需验证当前密码。
+      operationId: deleteAccount
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '200':
+          description: 注销成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+        '400':
+          $ref: '#/components/responses/InvalidParameters'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminAccountUndeletable'
 
   /api/v1/items:
     get:
@@ -1012,6 +1066,16 @@ components:
             code: 13002
             msg: 认领申请不存在
             data: null
+    AdminAccountUndeletable:
+      description: 管理员账号不允许注销
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 10004
+            msg: 管理员账号不允许注销
+            data: null
     InvalidClaimState:
       description: 认领申请当前状态不允许此操作
       content:
@@ -1290,6 +1354,25 @@ components:
           example: 7200
         user:
           $ref: '#/components/schemas/User'
+
+    UpdateProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: 李四
+
+    DeleteAccountRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          example: password123
 
     CreateItemRequest:
       type: object

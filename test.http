@@ -193,3 +193,21 @@ Authorization: Bearer <systemAdminToken>
 ### 31. 统计总览（lost_admin/system_admin 均可）
 GET http://localhost:8080/api/v1/admin/statistics/overview
 Authorization: Bearer <adminAccessToken>
+
+### 32. 修改个人信息（当前支持修改姓名）
+PATCH http://localhost:8080/api/v1/auth/profile
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+    "name": "新姓名"
+}
+
+### 33. 注销账号（危险操作：需验证当前密码；名下物品下架、待审核认领自动取消；管理员账号不允许注销）
+DELETE http://localhost:8080/api/v1/auth/account
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+    "password": "password123"
+}

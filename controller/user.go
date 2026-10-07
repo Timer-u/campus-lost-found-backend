@@ -73,3 +73,46 @@ func GetCurrentUser(c *gin.Context) {
 func Logout(c *gin.Context) {
 	response.Success(c, nil)
 }
+
+// updateProfileRequest 修改个人信息参数，约束与 docs/openapi.yaml 的 UpdateProfileRequest 一致
+type updateProfileRequest struct {
+	Name string `json:"name" binding:"required,max=50"`
+}
+
+// UpdateProfile 修改当前登录用户的个人信息
+func UpdateProfile(c *gin.Context) {
+	var req updateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.ErrInvalidParams)
+		return
+	}
+
+	user, eno := service.UpdateProfile(currentUserID(c), req.Name)
+	if eno != nil {
+		response.Fail(c, eno)
+		return
+	}
+
+	response.Success(c, user)
+}
+
+// deleteAccountRequest 注销账号参数（危险操作，需验证当前密码）
+type deleteAccountRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// DeleteAccount 注销当前登录账号
+func DeleteAccount(c *gin.Context) {
+	var req deleteAccountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.ErrInvalidParams)
+		return
+	}
+
+	if eno := service.DeleteAccount(currentUserID(c), req.Password); eno != nil {
+		response.Fail(c, eno)
+		return
+	}
+
+	response.Success(c, nil)
+}
