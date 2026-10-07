@@ -75,6 +75,7 @@ func SetupRouter() *gin.Engine {
 	admin.Use(middleware.JWTAuth(), middleware.RequireLostAdmin())
 	{
 		admin.GET("/items", controller.AdminListItems)
+		admin.GET("/claims", controller.AdminListClaims)
 		admin.PATCH("/items/:itemId/review", controller.AdminReviewItem)
 		admin.PATCH("/items/:itemId/status", controller.AdminUpdateItemStatus)
 		admin.PATCH("/claims/:claimId/status", controller.AdminReviewClaim)
