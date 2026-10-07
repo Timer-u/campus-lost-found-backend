@@ -109,6 +109,10 @@ Authorization: Bearer <accessToken>
 GET http://localhost:8080/api/v1/admin/items
 Authorization: Bearer <adminAccessToken>
 
+### 19.1 管理员全局认领申请列表（status 可选 pending/approved/rejected/cancelled）
+GET http://localhost:8080/api/v1/admin/claims
+Authorization: Bearer <adminAccessToken>
+
 ### 20. 审核物品（approved/rejected/offline，拒绝时建议附 rejectReason）
 PATCH http://localhost:8080/api/v1/admin/items/5/review
 Authorization: Bearer <adminAccessToken>

@@ -10,6 +10,23 @@ import (
 	"campus-lost-found-backend/service"
 )
 
+// AdminListClaims 全局认领申请列表：可按状态筛选，联表物品标题与申请人姓名
+func AdminListClaims(c *gin.Context) {
+	page, pageSize := util.ParsePage(c.Query("page"), c.Query("pageSize"))
+
+	claims, meta, eno := service.AdminListClaims(service.AdminClaimListQuery{
+		Page:     page,
+		PageSize: pageSize,
+		Status:   c.Query("status"),
+	})
+	if eno != nil {
+		response.Fail(c, eno)
+		return
+	}
+
+	response.Success(c, gin.H{"claims": claims, "meta": meta})
+}
+
 // AdminListItems 管理员物品列表：全部状态可见，待审核优先
 func AdminListItems(c *gin.Context) {
 	page, pageSize := util.ParsePage(c.Query("page"), c.Query("pageSize"))
