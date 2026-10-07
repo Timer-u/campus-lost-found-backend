@@ -39,6 +39,8 @@ func SetupRouter() *gin.Engine {
 			{
 				authed.GET("/me", controller.GetCurrentUser)
 				authed.POST("/logout", controller.Logout)
+				authed.PATCH("/profile", controller.UpdateProfile)
+				authed.DELETE("/account", controller.DeleteAccount)
 			}
 		}
 
