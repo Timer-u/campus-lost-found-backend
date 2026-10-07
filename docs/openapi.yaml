@@ -663,6 +663,33 @@ paths:
         '409':
           $ref: '#/components/responses/InvalidClaimState'
 
+  /api/v1/admin/claims:
+    get:
+      tags: [Admin Items]
+      summary: 管理员查询全局认领申请
+      description: 分页返回全站认领申请（含所属物品标题与申请人姓名），可按状态筛选。
+      operationId: adminListClaims
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ClaimStatus'
+      responses:
+        '200':
+          description: 认领申请列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminForbidden'
+
   /api/v1/admin/users:
     get:
       tags: [Admin Users]
@@ -1240,6 +1267,10 @@ components:
           type: integer
           format: int64
           example: 1
+        itemTitle:
+          type: string
+          description: 所属物品标题（列表接口联表返回）
+          example: 蓝色长柄雨伞
         applicantId:
           type: integer
           format: int64

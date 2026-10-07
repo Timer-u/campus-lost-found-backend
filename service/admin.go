@@ -181,3 +181,57 @@ func AdminReviewClaim(adminID, claimID uint, status, reviewReason string) (*mode
 	claim.ApplicantName = claim.Applicant.Name
 	return &claim, nil
 }
+
+// AdminClaimListQuery 管理员认领申请列表查询参数
+type AdminClaimListQuery struct {
+	Page     int
+	PageSize int
+	Status   string
+}
+
+// AdminListClaims 全局认领申请列表：联表返回物品标题与申请人姓名，可按状态筛选
+func AdminListClaims(q AdminClaimListQuery) ([]model.Claim, util.PageMeta, *response.Errno) {
+	if q.Status != "" && !claimStatusAllowed[q.Status] {
+		return nil, util.PageMeta{}, response.ErrInvalidParams
+	}
+
+	query := model.DB.Model(&model.Claim{})
+	if q.Status != "" {
+		query = query.Where("status = ?", q.Status)
+	}
+
+	base := query.Session(&gorm.Session{})
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, util.PageMeta{}, response.ErrInternal
+	}
+
+	var claims []model.Claim
+	if err := base.Preload("Applicant").Order("created_at DESC, id DESC").
+		Offset((q.Page - 1) * q.PageSize).Limit(q.PageSize).Find(&claims).Error; err != nil {
+		return nil, util.PageMeta{}, response.ErrInternal
+	}
+
+	// 收集物品 ID，一次查询标题（含已下架/已删除物品，保留历史可读性）
+	itemIDs := make([]uint, 0, len(claims))
+	for _, c := range claims {
+		itemIDs = append(itemIDs, c.ItemID)
+	}
+	titleMap := map[uint]string{}
+	if len(itemIDs) > 0 {
+		var items []model.Item
+		if err := model.DB.Unscoped().Select("id", "title").
+			Where("id IN ?", itemIDs).Find(&items).Error; err != nil {
+			return nil, util.PageMeta{}, response.ErrInternal
+		}
+		for _, it := range items {
+			titleMap[it.ID] = it.Title
+		}
+	}
+	for i := range claims {
+		claims[i].ApplicantName = claims[i].Applicant.Name
+		claims[i].ItemTitle = titleMap[claims[i].ItemID]
+	}
+
+	return claims, util.NewPageMeta(int64(q.Page), int64(q.PageSize), total), nil
+}
