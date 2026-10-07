@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -138,7 +137,7 @@ func DeleteAccount(userID uint, password string) *response.Errno {
 	err := model.DB.Transaction(func(tx *gorm.DB) error {
 		// 改写学号，释放唯一索引
 		if err := tx.Model(&user).Update("username",
-			fmt.Sprintf("%s#deleted%d", user.Username, time.Now().UnixNano())).Error; err != nil {
+			fmt.Sprintf("%s#deleted%d", user.Username, user.ID)).Error; err != nil {
 			return err
 		}
 		// 级联下架名下物品（软删除）
