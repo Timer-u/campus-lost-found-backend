@@ -7,7 +7,7 @@ func TestErrnoCodesUnique(t *testing.T) {
 	seen := make(map[int]string)
 
 	for _, e := range []*Errno{
-		ErrInvalidParams, ErrUnauthorized, ErrForbidden,
+		ErrInvalidParams, ErrUnauthorized, ErrForbidden, ErrAdminUndeletable,
 		ErrUsernameExists, ErrInvalidCredentials, ErrAccountDisabled,
 		ErrNeedLostAdmin, ErrNeedSystemAdmin,
 		ErrItemNotFound, ErrItemStatusNotAllowed,

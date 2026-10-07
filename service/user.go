@@ -2,7 +2,9 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -95,4 +97,65 @@ func GetByID(id uint) (*model.User, *response.Errno) {
 		return nil, response.ErrInternal
 	}
 	return &user, nil
+}
+
+// UpdateProfile 修改当前登录用户的个人信息（当前支持修改姓名）
+func UpdateProfile(userID uint, name string) (*model.User, *response.Errno) {
+	var user model.User
+	if err := model.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.ErrUserNotFound
+		}
+		return nil, response.ErrInternal
+	}
+
+	if err := model.DB.Model(&user).Update("name", name).Error; err != nil {
+		return nil, response.ErrInternal
+	}
+	user.Name = name
+	return &user, nil
+}
+
+// DeleteAccount 注销账号：验证密码后软删除当前账号，级联下架名下物品并取消待审核的认领申请。
+// 管理员账号不允许自我注销；注销时改写学号以释放唯一索引，允许该学号日后重新注册。
+func DeleteAccount(userID uint, password string) *response.Errno {
+	var user model.User
+	if err := model.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.ErrUserNotFound
+		}
+		return response.ErrInternal
+	}
+
+	// 危险操作：验证当前密码，防止设备被他人滥用
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return response.ErrInvalidCredentials
+	}
+	if user.Role != "student" {
+		return response.ErrAdminUndeletable
+	}
+
+	err := model.DB.Transaction(func(tx *gorm.DB) error {
+		// 改写学号，释放唯一索引
+		if err := tx.Model(&user).Update("username",
+			fmt.Sprintf("%s#deleted%d", user.Username, time.Now().UnixNano())).Error; err != nil {
+			return err
+		}
+		// 级联下架名下物品（软删除）
+		if err := tx.Where("user_id = ?", userID).Delete(&model.Item{}).Error; err != nil {
+			return err
+		}
+		// 待审核的认领申请自动取消
+		if err := tx.Model(&model.Claim{}).
+			Where("applicant_id = ? AND status = ?", userID, "pending").
+			Update("status", "cancelled").Error; err != nil {
+			return err
+		}
+		// 软删除账号
+		return tx.Delete(&user).Error
+	})
+	if err != nil {
+		return response.ErrInternal
+	}
+	return nil
 }

@@ -23,6 +23,7 @@ var (
 	ErrInvalidParams         = &Errno{Code: 10001, Msg: "参数错误", HTTP: http.StatusBadRequest}
 	ErrUnauthorized          = &Errno{Code: 10002, Msg: "未登录或登录已过期", HTTP: http.StatusUnauthorized}
 	ErrForbidden             = &Errno{Code: 10003, Msg: "无权操作该资源", HTTP: http.StatusForbidden}
+	ErrAdminUndeletable      = &Errno{Code: 10004, Msg: "管理员账号不允许注销", HTTP: http.StatusForbidden}
 	ErrUsernameExists        = &Errno{Code: 10007, Msg: "用户名已存在", HTTP: http.StatusConflict}
 	ErrInvalidCredentials    = &Errno{Code: 10008, Msg: "账号或密码错误", HTTP: http.StatusUnauthorized}
 	ErrAccountDisabled       = &Errno{Code: 10009, Msg: "账号已被禁用", HTTP: http.StatusForbidden}
